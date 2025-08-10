@@ -1,0 +1,8 @@
+*
+!*.lua
+!*.txt
+!*.tex
+!*.bin
+!*.mp3
+!*.wav
+!*.ogg
