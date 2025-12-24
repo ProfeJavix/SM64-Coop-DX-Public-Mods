@@ -1,47 +1,24 @@
--- name: \\#f00\\Mob\\#ff0\\Control \\#fff\\v1.1
--- description: This mod allows the players to control most of the vanilla enemies of SM64 and to use their (almost) vanilla moves.\n\nAlso adapted to EmilyEmmi's MarioHunt team mechanics.\n\nThanks to \\#619233\\The Incredible Holc\\#fff\\ for network optimization tips and some cool animation ideas.\n\nThanks to \\#920442\\Los Fantacastasmas\\#fff\\ for all the testing on online functions.\n\nMade by \\#333\\Profe\\#ff0\\Javix
+-- name: \\#f00\\Mob\\#ff0\\Control \\#fff\\v1.2
+-- description: This mod allows the players to control most of the vanilla enemies of SM64 and to use their (almost) vanilla moves.\n\nAlso adapted to EmilyEmmi's MarioHunt team mechanics and OOM mechanics.\n\nThanks to \\#619233\\The Incredible Holc\\#fff\\ for network optimization tips and some cool animation ideas.\n\nThanks to \\#920442\\Los Fantacastasmas\\#fff\\ for all the testing on online functions.\n\nMade by \\#333\\Profe\\#ff0\\Javix
 
-local hookAction = hook_mario_action
-local hookEvent = hook_event
-local hookCmd = hook_chat_command
+local hook_event = hook_event
+local hook_chat_command = hook_chat_command
 local network_is_server = network_is_server
 local set_mario_action = set_mario_action
 local get_id_from_behavior = get_id_from_behavior
 local network_send_object = network_send_object
-local distBetObjs = dist_between_objects
+local dist_between_objects = dist_between_objects
 local spawn_wind_particles = spawn_wind_particles
 local play_sound = play_sound
-local object_pos_to_vec3f = object_pos_to_vec3f
 local mario_stop_riding_and_holding = mario_stop_riding_and_holding
 
 local nps = gNetworkPlayers
 local states = gMarioStates
 local playerTable = gPlayerSyncTable
 local globalTable = gGlobalSyncTable
-local cam = gLakituState
-
---#region MH Comp. ---------------------------------------------------------------------------------------------------------------------
-mhExists = _G.mhExists
-getMHTeam = function(_) return 0 end
-mhPvpIsValid = function(_, _) return true end
-if mhExists then
-    getMHTeam = _G.mhApi.getTeam
-    mhPvpIsValid = _G.mhApi.pvpIsValid
-end
---#endregion -----------------------------------------------------------------------------------------------------------------------------------
-
---#region Colored Nametags Comp. ---------------------------------------------------------------------------------------------------------------
-cnOn = _G.coloredNametagsOn
-cnSetNametagVisibility = function(_, _) end
-cnSetNametagWorldPos = function(_, _) end
-if cnOn then
-    cnSetNametagVisibility = _G.coloredNametagsFuncs.set_nametag_visibility
-    cnSetNametagWorldPos = _G.coloredNametagsFuncs.set_nametag_world_pos
-end
---#endregion -----------------------------------------------------------------------------------------------------------------------------------
 
 --#region Globals ------------------------------------------------------------------------------------------------------------------------------
-ACT_CONTROLLING_MOB = allocate_mario_action(ACT_GROUP_CUTSCENE | ACT_FLAG_INTANGIBLE | ACT_FLAG_INVULNERABLE)
+
 
 nearMobDetected = false
 nearMobBhvId = -1
@@ -66,9 +43,9 @@ playerTable[0].affectedByShockTimer = 0
 if network_is_server() then
     gServerSettings.pauseAnywhere = true
 end
---#endregion -----------------------------------------------------------------------------------------------------------------------------------
+--#endregion ---------------------------------------------------------------------------------------------------------------------------------
 
---#region Hook Func Utils ----------------------------------------------------------------------------------------------------------------------
+--#region Hook Func Utils --------------------------------------------------------------------------------------------------------------------
 
 ---@param m MarioState
 function useColoredNametags(m)
@@ -109,14 +86,14 @@ function handlePowers(m)
 
     if m.playerIndex ~= 0 or 
     (mhExists and globalTable.mhPowersOnlyForHunters and getMHTeam(0) == 1) or
-    m.action == ACT_CONTROLLING_MOB then 
-        return 
+    m.action == ACT_CONTROLLING_MOB then
+        return
     end
 
     if playerTable[0].powersCooldown > 0 then return end
 
     local nm = nearestAffectableMario(m)
-    if nm ~= nil and distBetObjs(m.marioObj, nm.marioObj) <= globalTable.powersRange then
+    if nm ~= nil and dist_between_objects(m.marioObj, nm.marioObj) <= globalTable.powersRange then
         
         placeFocusPointer(nm.marioObj)
 
@@ -146,92 +123,9 @@ function handlePowers(m)
         play_sound_button_change_blocked()
     end
 end
---#endregion -----------------------------------------------------------------------------------------------------------------------------------
+--#endregion ---------------------------------------------------------------------------------------------------------------------------------
 
---#region Mario Action -------------------------------------------------------------------------------------------------------------------------
-
----Thanks to Holc for the idea of the jump and the lerp explanation XD
----@param m MarioState
-function act_controlling_mob(m)
-
-    if m.usedObj == nil or
-    m.usedObj.activeFlags == ACTIVE_FLAG_DEACTIVATED or
-    (mhExists and globalTable.mhControlOnlyForHunters and getMHTeam(m.playerIndex) == 1) then
-        m.marioObj.header.gfx.node.flags = m.marioObj.header.gfx.node.flags & ~GRAPH_RENDER_INVISIBLE
-        m.squishTimer = 0
-        m.invincTimer = 30
-        play_sound(SOUND_GENERAL_PAINTING_EJECT, m.marioObj.header.gfx.cameraToObject)
-        set_mario_action(m, ACT_IDLE, 0)
-        --m.marioObj.hitboxHeight = 160
-        --m.marioObj.hitboxRadius = 37
-        return false
-    end
-    
-    local state = m.actionState
-
-    if state == 0 then
-        set_character_animation(m, CHAR_ANIM_DOUBLE_JUMP_RISE)
-        m.pos.y = m.usedObj.oPosY
-        m.vel.y = 60
-        play_mario_jump_sound(m)
-        m.faceAngle.y = obj_angle_to_object(m.marioObj, m.usedObj)
-        mario_set_forward_vel(m, 20)
-        m.actionState = 1
-
-    elseif state == 1 then
-
-        perform_air_step(m, 0)
-        if m.vel.y <= 30 then
-            if set_character_animation(m, CHAR_ANIM_FORWARD_SPINNING) == 0 then
-                play_sound(SOUND_ACTION_SPIN, m.marioObj.header.gfx.cameraToObject)
-            end
-
-            if m.vel.y <= 0 then
-                play_sound(SOUND_MENU_STAR_SOUND, m.marioObj.header.gfx.cameraToObject)
-                m.actionTimer = 40
-                m.actionState = 2
-            end
-        end
-
-    elseif state == 2 then
-        perform_air_step(m, 0)
-        set_character_animation(m, CHAR_ANIM_DIVE)
-        m.squishTimer = 0xFF
-
-        local timerScale = m.actionTimer / 40
-        m.actionTimer = m.actionTimer - 2
-        m.pos.x = lerp(m.usedObj.oPosX, m.pos.x, timerScale)
-        m.pos.z = lerp(m.usedObj.oPosZ, m.pos.z, timerScale)
-        vec3f_set(m.marioObj.header.gfx.scale, timerScale, timerScale, timerScale)
-        if timerScale <= 0.15 then
-            m.actionState = 3
-        end
-    else
-        m.marioObj.header.gfx.node.flags = m.marioObj.header.gfx.node.flags | GRAPH_RENDER_INVISIBLE
-        m.squishTimer = 0
-        set_mario_animation(m, MARIO_ANIM_IDLE_WITH_LIGHT_OBJ)
-        m.pos.x = m.usedObj.oPosX - 10 * sins(m.usedObj.oFaceAngleYaw)
-        m.pos.y = m.usedObj.oPosY
-        m.pos.z = m.usedObj.oPosZ - 10 * coss(m.usedObj.oFaceAngleYaw)
-
-        vec3f_copy(m.marioObj.header.gfx.pos, m.pos)
-		
-		if m.actionArg == 1 then
-            m.pos.y = m.pos.y + 500
-            if m.playerIndex == 0 then
-                object_pos_to_vec3f(cam.curFocus, m.usedObj)
-            end
-        end
-
-        --m.marioObj.hitboxHeight = 0
-        --m.marioObj.hitboxRadius = 0
-    end
-end
-
-hookAction(ACT_CONTROLLING_MOB, act_controlling_mob)
---#endregion -----------------------------------------------------------------------------------------------------------------------------------
-
---#region Hook Functions -----------------------------------------------------------------------------------------------------------------------
+--#region Hook Functions ---------------------------------------------------------------------------------------------------------------------
 
 function update()
 
@@ -283,7 +177,9 @@ function mario_update_local(m)
         if playerTable[0].controlTimer > 0 then return end
 
         local nearestObj = detectNearestAllowedMob(m.pos)
+
         if nearestObj ~= nil and m.action & ACT_GROUP_CUTSCENE == 0 then
+            
             placeFocusPointer(nearestObj)
             nearMobDetected = true
             nearMobBhvId = get_id_from_behavior(nearestObj.behavior)
@@ -478,10 +374,10 @@ end
 --#endregion -----------------------------------------------------------------------------------------------------------------------------------
 
 --#region Hooks --------------------------------------------------------------------------------------------------------------------------------
-hookEvent(HOOK_UPDATE, update)
-hookEvent(HOOK_MARIO_UPDATE, mario_update)
-hookEvent(HOOK_ALLOW_PVP_ATTACK, on_allow_pvp_attack)
-hookEvent(HOOK_ON_NAMETAGS_RENDER, on_nametags_render)
+hook_event(HOOK_UPDATE, update)
+hook_event(HOOK_MARIO_UPDATE, mario_update)
+hook_event(HOOK_ALLOW_PVP_ATTACK, on_allow_pvp_attack)
+hook_event(HOOK_ON_NAMETAGS_RENDER, on_nametags_render)
 
-hookCmd("spawn", "[mobName] - Spawn a mob by it's name (debug).", spawnMob)
+hook_chat_command("spawn", "[mobName] - Spawn a mob by it's name (debug).", spawnMob)
 --#endregion -----------------------------------------------------------------------------------------------------------------------------------

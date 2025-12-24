@@ -1,5 +1,5 @@
-local hookBhv = hook_behavior
-local defineCustomFields = define_custom_obj_fields
+local hook_behavior = hook_behavior
+local define_custom_obj_fields = define_custom_obj_fields
 local network_init_object = network_init_object
 local cur_obj_play_sound_2 = cur_obj_play_sound_2
 local cur_obj_rotate_yaw_toward = cur_obj_rotate_yaw_toward
@@ -24,13 +24,14 @@ local obj_angle_to_object = obj_angle_to_object
 local obj_scale = obj_scale
 local obj_copy_pos_and_angle = obj_copy_pos_and_angle
 local get_temp_object_hitbox = get_temp_object_hitbox
+local max = math.max
 
 local states = gMarioStates
 local playerTable = gPlayerSyncTable
 local globalTable = gGlobalSyncTable
 
 --#region Bhv Utils ---------------------------------------------------------------------------------------------------------------------------
-defineCustomFields({
+define_custom_obj_fields({
     oPlayerControlling = 's32',
     oCustomTimer = 's32',
     oCustomGoombaWalkTimer = 's32',
@@ -831,7 +832,7 @@ function bhv_custom_koopa_loop(o)
         elseif movementType == KOOPA_BP_UNSHELLED then
             if o.oAction == KOOPA_UNSHELLED_ACT_LYING and o.oCustomKoopaExposed == 0 then
                 o.oCustomKoopaExposed = 1
-                spawn_sync_object(id_bhvKoopaShell, E_MODEL_KOOPA_SHELL, o.oPosX, o.oPosY, o.oPosZ, nil)
+                spawn_sync_object(id_bhvKoopaShell, E_MODEL_KOOPA_SHELL, o.oPosX, o.oPosY, o.oPosZ, function()end)
                 sendObj(o)
                 return
             end
@@ -1457,37 +1458,72 @@ end
 --#endregion ----------------------------------------------------------------------------------------------------------------------------------
 
 --#region BHV Hooks ---------------------------------------------------------------------------------------------------------------------------
-id_bhvCustomBalconyBigBoo = hookBhv(id_bhvBalconyBigBoo, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_boo_loop)
-id_bhvCustomBigBully = hookBhv(id_bhvBigBully, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_bully_loop)
-id_bhvCustomBigBullyWithMinions = hookBhv(id_bhvBigBullyWithMinions, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_bully_loop)
-id_bhvCustomBigChillBully = hookBhv(id_bhvBigChillBully, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_bully_loop)
-id_bhvCustomBobomb = hookBhv(id_bhvBobomb, OBJ_LIST_DESTRUCTIVE, false, common_init, bhv_custom_bobomb_loop)
-id_bhvCustomBoo = hookBhv(id_bhvBoo, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_boo_loop)
-id_bhvCustomBooWithCage = hookBhv(id_bhvBooWithCage, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_boo_loop)
-id_bhvCustomBowser = hookBhv(id_bhvBowser, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_bowser_loop)
-id_bhvCustomChainChomp = hookBhv(id_bhvChainChomp, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_chain_chomp_loop)
-id_bhvCustomChuckya = hookBhv(id_bhvChuckya, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_chuckya_loop)
-id_bhvCustomEnemyLakitu = hookBhv(id_bhvEnemyLakitu, OBJ_LIST_PUSHABLE, false, common_init, bhv_custom_lakitu_loop)
-id_bhvCustomFlyGuy = hookBhv(id_bhvFlyGuy, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_fly_guy_loop)
-id_bhvCustomGhostHuntBigBoo = hookBhv(id_bhvGhostHuntBigBoo, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_boo_loop)
-id_bhvCustomGhostHuntBoo = hookBhv(id_bhvGhostHuntBoo, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_boo_loop)
-id_bhvCustomGoomba = hookBhv(id_bhvGoomba, OBJ_LIST_PUSHABLE, false, common_init, bhv_custom_goomba_loop)
-id_bhvCustomKingBobomb = hookBhv(id_bhvKingBobomb, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_king_bobomb_loop)
-id_bhvCustomKoopa = hookBhv(id_bhvKoopa, OBJ_LIST_PUSHABLE, false, common_init, bhv_custom_koopa_loop)
-id_bhvCustomMadPiano = hookBhv(id_bhvMadPiano, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_mad_piano_loop)
-id_bhvCustomMerryGoRoundBigBoo = hookBhv(id_bhvMerryGoRoundBigBoo, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_boo_loop)
-id_bhvCustomMerryGoRoundBoo = hookBhv(id_bhvMerryGoRoundBoo, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_boo_loop)
-id_bhvCustomScuttlebug = hookBhv(id_bhvScuttlebug, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_scuttlebug_loop)
-id_bhvCustomSkeeter = hookBhv(id_bhvSkeeter, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_skeeter_loop)
-id_bhvCustomSmallBully = hookBhv(id_bhvSmallBully, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_bully_loop)
-id_bhvCustomSmallChillBully = hookBhv(id_bhvSmallChillBully, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_bully_loop)
-id_bhvCustomSmallPenguin = hookBhv(id_bhvSmallPenguin, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_small_penguin_loop)
-id_bhvCustomSmallWhomp = hookBhv(id_bhvSmallWhomp, OBJ_LIST_SURFACE, false, common_init, bhv_custom_whomp_loop)
-id_bhvCustomSpindrift = hookBhv(id_bhvSpindrift, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_spindrift_loop)
-id_bhvCustomSpiny = hookBhv(id_bhvSpiny, OBJ_LIST_PUSHABLE, false, common_init, bhv_custom_spiny_loop)
-id_bhvCustomToadMessage = hookBhv(id_bhvToadMessage, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_toad_message_loop)
-id_bhvCustomTweester = hookBhv(id_bhvTweester, OBJ_LIST_POLELIKE, false, nil, bhv_custom_tweester_loop)
-id_bhvCustomUkiki = hookBhv(id_bhvUkiki, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_ukiki_loop)
-id_bhvCustomWhompKingBoss = hookBhv(id_bhvWhompKingBoss, OBJ_LIST_SURFACE, false, common_init, bhv_custom_whomp_loop)
-id_bhvCustomWigglerHead = hookBhv(id_bhvWigglerHead, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_wiggler_head_loop)
+id_bhvCustomBalconyBigBoo = hook_behavior(id_bhvBalconyBigBoo, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_boo_loop)
+id_bhvCustomBigBully = hook_behavior(id_bhvBigBully, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_bully_loop)
+id_bhvCustomBigBullyWithMinions = hook_behavior(id_bhvBigBullyWithMinions, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_bully_loop)
+id_bhvCustomBigChillBully = hook_behavior(id_bhvBigChillBully, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_bully_loop)
+id_bhvCustomBobomb = hook_behavior(id_bhvBobomb, OBJ_LIST_DESTRUCTIVE, false, common_init, bhv_custom_bobomb_loop)
+id_bhvCustomBoo = hook_behavior(id_bhvBoo, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_boo_loop)
+id_bhvCustomBooWithCage = hook_behavior(id_bhvBooWithCage, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_boo_loop)
+id_bhvCustomBowser = hook_behavior(id_bhvBowser, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_bowser_loop)
+id_bhvCustomChainChomp = hook_behavior(id_bhvChainChomp, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_chain_chomp_loop)
+id_bhvCustomChuckya = hook_behavior(id_bhvChuckya, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_chuckya_loop)
+id_bhvCustomEnemyLakitu = hook_behavior(id_bhvEnemyLakitu, OBJ_LIST_PUSHABLE, false, common_init, bhv_custom_lakitu_loop)
+id_bhvCustomFlyGuy = hook_behavior(id_bhvFlyGuy, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_fly_guy_loop)
+id_bhvCustomGhostHuntBigBoo = hook_behavior(id_bhvGhostHuntBigBoo, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_boo_loop)
+id_bhvCustomGhostHuntBoo = hook_behavior(id_bhvGhostHuntBoo, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_boo_loop)
+id_bhvCustomGoomba = hook_behavior(id_bhvGoomba, OBJ_LIST_PUSHABLE, false, common_init, bhv_custom_goomba_loop)
+id_bhvCustomKingBobomb = hook_behavior(id_bhvKingBobomb, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_king_bobomb_loop)
+id_bhvCustomKoopa = hook_behavior(id_bhvKoopa, OBJ_LIST_PUSHABLE, false, common_init, bhv_custom_koopa_loop)
+id_bhvCustomMadPiano = hook_behavior(id_bhvMadPiano, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_mad_piano_loop)
+id_bhvCustomMerryGoRoundBigBoo = hook_behavior(id_bhvMerryGoRoundBigBoo, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_boo_loop)
+id_bhvCustomMerryGoRoundBoo = hook_behavior(id_bhvMerryGoRoundBoo, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_boo_loop)
+id_bhvCustomScuttlebug = hook_behavior(id_bhvScuttlebug, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_scuttlebug_loop)
+id_bhvCustomSkeeter = hook_behavior(id_bhvSkeeter, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_skeeter_loop)
+id_bhvCustomSmallBully = hook_behavior(id_bhvSmallBully, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_bully_loop)
+id_bhvCustomSmallChillBully = hook_behavior(id_bhvSmallChillBully, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_bully_loop)
+id_bhvCustomSmallPenguin = hook_behavior(id_bhvSmallPenguin, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_small_penguin_loop)
+id_bhvCustomSmallWhomp = hook_behavior(id_bhvSmallWhomp, OBJ_LIST_SURFACE, false, common_init, bhv_custom_whomp_loop)
+id_bhvCustomSpindrift = hook_behavior(id_bhvSpindrift, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_spindrift_loop)
+id_bhvCustomSpiny = hook_behavior(id_bhvSpiny, OBJ_LIST_PUSHABLE, false, common_init, bhv_custom_spiny_loop)
+id_bhvCustomToadMessage = hook_behavior(id_bhvToadMessage, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_toad_message_loop)
+id_bhvCustomTweester = hook_behavior(id_bhvTweester, OBJ_LIST_POLELIKE, false, nil, bhv_custom_tweester_loop)
+id_bhvCustomUkiki = hook_behavior(id_bhvUkiki, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_ukiki_loop)
+id_bhvCustomWhompKingBoss = hook_behavior(id_bhvWhompKingBoss, OBJ_LIST_SURFACE, false, common_init, bhv_custom_whomp_loop)
+id_bhvCustomWigglerHead = hook_behavior(id_bhvWigglerHead, OBJ_LIST_GENACTOR, false, common_init, bhv_custom_wiggler_head_loop)
+
+ALLOWED_MOBS = {
+    id_bhvCustomBalconyBigBoo,
+    id_bhvCustomBigBully,
+    id_bhvCustomBigBullyWithMinions,
+    id_bhvCustomBigChillBully,
+    id_bhvCustomBobomb,
+    id_bhvCustomBoo,
+    id_bhvCustomBooWithCage,
+    id_bhvCustomBowser,
+    id_bhvCustomChainChomp,
+    id_bhvCustomChuckya,
+    id_bhvCustomEnemyLakitu,
+    id_bhvCustomFlyGuy,
+    id_bhvCustomGhostHuntBigBoo,
+    id_bhvCustomGhostHuntBoo,
+    id_bhvCustomGoomba,
+    id_bhvCustomKingBobomb,
+    id_bhvCustomKoopa,
+    id_bhvCustomMadPiano,
+    id_bhvCustomMerryGoRoundBigBoo,
+    id_bhvCustomMerryGoRoundBoo,
+    id_bhvCustomScuttlebug,
+    id_bhvCustomSkeeter,
+    id_bhvCustomSmallBully,
+    id_bhvCustomSmallChillBully,
+    id_bhvCustomSmallPenguin,
+    id_bhvCustomSmallWhomp,
+    id_bhvCustomSpindrift,
+    id_bhvCustomSpiny,
+    id_bhvCustomToadMessage,
+    id_bhvCustomUkiki,
+    id_bhvCustomWhompKingBoss,
+    id_bhvCustomWigglerHead
+}
 --#endregion ----------------------------------------------------------------------------------------------------------------------------------

@@ -1,11 +1,15 @@
+--#region Localizations ---------------------------------------------------------------------
+
 local allocate_mario_action = allocate_mario_action
-local set_mario_action = set_mario_action
-local set_character_animation = set_character_animation
-local set_anim_to_frame = set_anim_to_frame
+local audio_sample_play = audio_sample_play
 local hook_mario_action = hook_mario_action
 local play_character_sound = play_character_sound
-local audio_sample_play = audio_sample_play
+local set_anim_to_frame = set_anim_to_frame
 local set_character_anim_with_accel = set_character_anim_with_accel
+local set_character_animation = set_character_animation
+local set_mario_action = set_mario_action
+
+--#endregion --------------------------------------------------------------------------------
 
 local globalTable = gGlobalSyncTable
 local playerTable = gPlayerSyncTable

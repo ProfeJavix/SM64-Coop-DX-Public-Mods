@@ -16,7 +16,7 @@ local find_object_with_behavior = find_object_with_behavior
 local get_behavior_from_id = get_behavior_from_id
 local ceil = math.ceil
 local floor = math.floor
-local clamp = clampf
+local clamp = math.clamp
 
 local nps = gNetworkPlayers
 local states = gMarioStates

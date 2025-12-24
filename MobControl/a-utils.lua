@@ -1,8 +1,21 @@
+---@class Object
+---@field oPlayerControlling integer
+---@field oCustomTimer integer
+---@field oCustomKoopaExposed integer
+
+---@class _G
+---@field mhExists? boolean
+---@field mhApi? table
+---@field coloredNametagsOn? boolean
+---@field coloredNametagsFuncs? table
+---@field OmmEnabled? boolean
+---@field OmmApi? table
+
 local nps = gNetworkPlayers
 local states = gMarioStates
 local globalTable = gGlobalSyncTable
 
-local distBetObjs = dist_between_objects
+local dist_between_objects = dist_between_objects
 local get_id_from_behavior = get_id_from_behavior
 local is_player_active = is_player_active
 local spawn_non_sync_object = spawn_non_sync_object
@@ -11,40 +24,33 @@ local gsub = string.gsub
 local sub = string.sub
 local length = string.len
 
-local ALLOWED_MOBS = {
-    id_bhvCustomBalconyBigBoo,
-    id_bhvCustomBigBully,
-    id_bhvCustomBigBullyWithMinions,
-    id_bhvCustomBigChillBully,
-    id_bhvCustomBobomb,
-    id_bhvCustomBoo,
-    id_bhvCustomBooWithCage,
-    id_bhvCustomBowser,
-    id_bhvCustomChainChomp,
-    id_bhvCustomChuckya,
-    id_bhvCustomEnemyLakitu,
-    id_bhvCustomFlyGuy,
-    id_bhvCustomGhostHuntBigBoo,
-    id_bhvCustomGhostHuntBoo,
-    id_bhvCustomGoomba,
-    id_bhvCustomKingBobomb,
-    id_bhvCustomKoopa,
-    id_bhvCustomMadPiano,
-    id_bhvCustomMerryGoRoundBigBoo,
-    id_bhvCustomMerryGoRoundBoo,
-    id_bhvCustomScuttlebug,
-    id_bhvCustomSkeeter,
-    id_bhvCustomSmallBully,
-    id_bhvCustomSmallChillBully,
-    id_bhvCustomSmallPenguin,
-    id_bhvCustomSmallWhomp,
-    id_bhvCustomSpindrift,
-    id_bhvCustomSpiny,
-    id_bhvCustomToadMessage,
-    id_bhvCustomUkiki,
-    id_bhvCustomWhompKingBoss,
-    id_bhvCustomWigglerHead
-}
+--#region MH Comp. ---------------------------------------------------------------------------------------------------------------------
+
+mhExists = _G.mhExists
+getMHTeam = function(_) return 0 end
+mhPvpIsValid = function(_, _) return true end
+if mhExists then
+    getMHTeam = _G.mhApi.getTeam
+    mhPvpIsValid = _G.mhApi.pvpIsValid
+end
+--#endregion ---------------------------------------------------------------------------------------------------------------------------------
+
+--#region Colored Nametags Comp. -------------------------------------------------------------------------------------------------------------
+
+cnOn = _G.coloredNametagsOn
+cnSetNametagVisibility = function(_, _) end
+cnSetNametagWorldPos = function(_, _) end
+if cnOn then
+    cnSetNametagVisibility = _G.coloredNametagsFuncs.set_nametag_visibility
+    cnSetNametagWorldPos = _G.coloredNametagsFuncs.set_nametag_world_pos
+end
+--#endregion ---------------------------------------------------------------------------------------------------------------------------------
+
+ommEnabled = false
+
+--#region OMM Comp ---------------------------------------------------------------------------------------------------------------------------
+
+--#endregion ---------------------------------------------------------------------------------------------------------------------------------
 
 ---@param a number
 ---@param b number
@@ -85,7 +91,7 @@ function colorHexToRGB(hexColor)
         color.b = tonumber("0x"..sub(hexColor, 5, 6)) or 0
     end
 
-    return color 
+    return color
 end
 
 ---@param globalIdx integer
@@ -167,7 +173,7 @@ function nearestAffectableMario(m)
             nps[i].currAreaIndex == nps[m.playerIndex].currAreaIndex and
             nps[i].currLevelNum == nps[m.playerIndex].currLevelNum and
             (not mhExists or getMHTeam(m.playerIndex) ~= getMHTeam(i)) then
-            local dist = distBetObjs(m.marioObj, states[i].marioObj)
+            local dist = dist_between_objects(m.marioObj, states[i].marioObj)
             if dist < minDist then
                 nm = states[i]
                 minDist = dist
@@ -197,7 +203,7 @@ function placeFocusPointer(focusedObj)
         y = objPos.y + focusedObj.hitboxHeight / 2 + dir.y * (10 * focusedObj.header.gfx.scale.y + focusedObj.hitboxRadius),
         z = objPos.z + dir.z * (10 * focusedObj.header.gfx.scale.z + focusedObj.hitboxRadius)
     }
-    spawn_non_sync_object(id_bhvSparkle, E_MODEL_SPARKLES_ANIMATION, spawnPos.x, spawnPos.y, spawnPos.z, nil)
+    spawn_non_sync_object(id_bhvSparkle, E_MODEL_SPARKLES_ANIMATION, spawnPos.x, spawnPos.y, spawnPos.z, function ()end)
 end
 
 ---@param o Object
@@ -205,4 +211,8 @@ function sendObj(o)
     if o.activeFlags ~= ACTIVE_FLAG_DEACTIVATED then
         network_send_object(o, true)
     end
+end
+
+function log(msg)
+    djui_chat_message_create(tostring(msg))
 end

@@ -1,16 +1,21 @@
--- name: Timestop v1.0
+-- name: Timestop v1.1
 -- description: There are two teams and one of them has a Sta... ehem, ability to stop time.\n\nBest played with MarioHunt.\n\nMade by \\#333\\Profe\\#ff0\\Javix
 
-local popup = djui_popup_create
+--#region Localizations ---------------------------------------------------------------------
+
+local audio_sample_play = audio_sample_play
+local djui_popup_create = djui_popup_create
+local hook_chat_command = hook_chat_command
+local hook_event = hook_event
+local le_set_ambient_color = le_set_ambient_color
 local lower = string.lower
 local network_is_server = network_is_server
-local network_player_set_description = network_player_set_description
-local set_mario_action = set_mario_action
-local play_sound = play_sound
-local audio_sample_play = audio_sample_play
-local hook_event = hook_event
-local hook_chat_command = hook_chat_command
 local network_player_connected_count = network_player_connected_count
+local network_player_set_description = network_player_set_description
+local play_sound = play_sound
+local set_mario_action = set_mario_action
+
+--#endregion --------------------------------------------------------------------------------
 
 local nps = gNetworkPlayers
 local globalTable = gGlobalSyncTable
@@ -51,7 +56,7 @@ function update()
             globalTable.timeStopSeconds = globalTable.timeStopSeconds - 1
 
             if globalTable.timeStopSeconds == 0 then
-
+                ambientTimer = 0
                 globalTable.timeStopCooldown = globalTable.timeStopStartingCooldown
 
                 for i = 0, MAX_PLAYERS - 1 do
@@ -99,14 +104,16 @@ function mario_update(m)
             playerTable[idx].timestopDmg = 0
         end
 
-        if idx == 0 and
-        m.controller.buttonPressed & X_BUTTON ~= 0 and
-        globalTable.timeStopTeam == team then
+        if m.controller.buttonPressed & X_BUTTON ~= 0 and globalTable.timeStopTeam == team then
 
             if globalTable.timeStopCooldown == 0 then
-                globalTable.timeStopSeconds = globalTable.timeStopStartingSeconds
-                set_mario_action(m, ACT_STOP_TIME, 0)
-            else
+                ambientTimer = 0
+
+                if idx == 0 then
+                    globalTable.timeStopSeconds = globalTable.timeStopStartingSeconds
+                    set_mario_action(m, ACT_STOP_TIME, 0)
+                end
+            elseif idx == 0 then
                 play_sound(SOUND_MENU_CAMERA_BUZZ, gGlobalSoundSource)
             end
         end
@@ -154,12 +161,17 @@ function on_interact(m)
     end
 end
 
+function on_level_init()
+    le_set_ambient_color(255, 255, 255)
+end
+
 hook_event(HOOK_UPDATE, update)
 hook_event(HOOK_MARIO_UPDATE, mario_update)
 hook_event(HOOK_ON_PLAYER_CONNECTED, on_player_connected)
 hook_event(HOOK_ON_PLAYER_DISCONNECTED, on_player_disconnected)
 hook_event(HOOK_ON_PVP_ATTACK, on_pvp_attack)
 hook_event(HOOK_ON_INTERACT, on_interact)
+hook_event(HOOK_ON_LEVEL_INIT, on_level_init)
 
 if not mhExists then
 
@@ -172,7 +184,7 @@ if not mhExists then
             if lower(curTeam) ~= msg and
             network_player_connected_count() > 1 and
             playersInTeam(playerTable[0].team) <= 1 then
-                popup('You are the only member of ' .. curTeam .. 'Team', 1)
+                djui_popup_create('You are the only member of ' .. curTeam .. 'Team', 1)
                 return true
             end
 
@@ -185,7 +197,7 @@ if not mhExists then
             curTeam = TEAM_NAMES[playerTable[0].team][1]
         end
 
-        popup('You belong to ' .. curTeam .. ' Team', 1)
+        djui_popup_create('You belong to ' .. curTeam .. ' Team', 1)
 
         return true
     end)
@@ -204,7 +216,7 @@ if network_is_server() then
             globalTable.timeStopTeam = TEAM_BLUE
         end
 
-        popup('Timestop team: ' .. TEAM_NAMES[globalTable.timeStopTeam][nameIdx] .. ' Team', 1)
+        djui_popup_create('Timestop team: ' .. TEAM_NAMES[globalTable.timeStopTeam][nameIdx] .. ' Team', 1)
 
         return true
     end)

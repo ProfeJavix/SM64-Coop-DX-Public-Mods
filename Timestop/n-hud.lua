@@ -1,48 +1,31 @@
+--#region Localizations ---------------------------------------------------------------------
+
 local ceil = math.ceil
-local clamp = clamp
-local min = math.min
-local screenWidth = djui_hud_get_screen_width
-local screenHeight = djui_hud_get_screen_height
-local drawRect = djui_hud_render_rect_interpolated
-local setColor = djui_hud_set_color
-local setFont = djui_hud_set_font
-local play_sound = play_sound
-local drawText = djui_hud_print_text
-local measure = djui_hud_measure_text
+local djui_hud_get_screen_height = djui_hud_get_screen_height
+local djui_hud_get_screen_width = djui_hud_get_screen_width
+local djui_hud_measure_text = djui_hud_measure_text
+local djui_hud_print_text = djui_hud_print_text
+local djui_hud_set_color = djui_hud_set_color
+local djui_hud_set_font = djui_hud_set_font
 local hook_event = hook_event
-local network_is_server = network_is_server
 local hook_mod_menu_checkbox = hook_mod_menu_checkbox
 local hook_mod_menu_slider = hook_mod_menu_slider
+local le_set_ambient_color = le_set_ambient_color
+local lerp = math.lerp
+local network_is_server = network_is_server
+local play_sound = play_sound
+
+--#endregion --------------------------------------------------------------------------------
 
 local globalTable = gGlobalSyncTable
 local playerTable = gPlayerSyncTable
 
-local prevRect = {x = screenWidth() / 2, y = screenHeight() / 2, wdth = 0, hght = 0}
-local RESIZE_SPEED = 200
-
-function drawTimestopRect()
-
-    if not allowJJBAEffects then return end
-
-    local screenWdth, screenHght = screenWidth() , screenHeight()
-    local x, y, wdth, hght = prevRect.x, prevRect.y, prevRect.wdth, prevRect.hght
-
-    wdth = clamp(min(wdth + ternary(globalTable.timeStopSeconds > 0, RESIZE_SPEED, -RESIZE_SPEED), screenWdth), 0, screenWdth)
-    hght = clamp(wdth / (screenWdth / screenHght), 0, screenHght)
-
-    x = screenWdth / 2 - wdth/2
-    y = screenHght / 2 - hght/2
-
-    setColor(30, 30, 30, 150)
-    drawRect(prevRect.x, prevRect.y, prevRect.wdth, prevRect.hght, x, y, wdth, hght)
-
-    prevRect = {x = x, y = y, wdth = wdth, hght = hght}
-end
+ambientTimer = -1
 
 function on_hud_render()
 
     local team = playerTable[0].team
-    setFont(FONT_RECOLOR_HUD)
+    djui_hud_set_font(FONT_RECOLOR_HUD)
 
     if globalTable.timeStopSeconds > 0 then
         if globalTable.timeStopSeconds % 30 == 0 then
@@ -50,30 +33,44 @@ function on_hud_render()
         end
 
         if not allowJJBAEffects and team ~= globalTable.timeStopTeam then
-            drawText('STOPPED', 5, screenHeight() / 2 - 27, 1.5)
+            djui_hud_print_text('STOPPED', 5, djui_hud_get_screen_height() / 2 - 27, 1.5)
         end
-
     else
         if globalTable.timeStopTeam == team then
             local seconds = globalTable.timeStopCooldown
             local text = ''
             if seconds > 0 then
-                setColor(46, 204, 228, 240)
+                djui_hud_set_color(46, 204, 228, 240)
                 text = 'Timestop Cooldown: ' .. ceil(seconds / 30) .. 's'
             else
-                setColor(TEAM_COLORS[team].r, TEAM_COLORS[team].g, TEAM_COLORS[team].b, TEAM_COLORS[team].a)
+                djui_hud_set_color(TEAM_COLORS[team].r, TEAM_COLORS[team].g, TEAM_COLORS[team].b, TEAM_COLORS[team].a)
                 text = 'Press X To Stop Time'
             end
-            drawText(text, 5, screenHeight() / 2 - 27, 1.5)
+            djui_hud_print_text(text, 5, djui_hud_get_screen_height() / 2 - 27, 1.5)
         end
     end
 
-    drawTimestopRect()
+    if ambientTimer >= 0 then
+
+        local start, target
+        if globalTable.timeStopSeconds > 0 then
+            start, target = 255, 0
+        else
+            start, target = 0, 255
+        end
+
+        ambientTimer = ambientTimer + 1
+        le_set_ambient_color(lerp(start, target, ambientTimer / 25), 255, 255)
+
+        if ambientTimer == 25 then
+            ambientTimer = -1
+        end
+    end
 
     if not mhExists then
-        setColor(TEAM_COLORS[team].r, TEAM_COLORS[team].g, TEAM_COLORS[team].b, TEAM_COLORS[team].a)
+        djui_hud_set_color(TEAM_COLORS[team].r, TEAM_COLORS[team].g, TEAM_COLORS[team].b, TEAM_COLORS[team].a)
         local text = TEAM_NAMES[team][1] .. ' Team'
-        drawText(text, screenWidth() / 2 - measure(text), 5, 2)
+        djui_hud_print_text(text, djui_hud_get_screen_width() / 2 - djui_hud_measure_text(text), 5, 2)
     end
 end
 

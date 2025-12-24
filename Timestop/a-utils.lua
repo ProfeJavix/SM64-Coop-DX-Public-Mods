@@ -1,4 +1,14 @@
+--#region Localizations ---------------------------------------------------------------------
+
 local audio_sample_load = audio_sample_load
+local djui_chat_message_create = djui_chat_message_create
+local tostring = tostring
+
+--#endregion --------------------------------------------------------------------------------
+
+---@class _G
+---@field mhExists? boolean
+---@field mhApi? table
 
 local nps = gNetworkPlayers
 local playerTable = gPlayerSyncTable
