@@ -49,6 +49,42 @@ local states = gMarioStates
 local playerTable = gPlayerSyncTable
 
 ---@param o Object
+---@param continueOnHit? boolean
+---@return boolean
+local function pikachuProjectileHitObj(o, continueOnHit)
+
+    local hit = false
+
+    for _, list in ipairs({ OBJ_LIST_GENACTOR, OBJ_LIST_PUSHABLE }) do
+        local curO = obj_get_first(list)
+        while curO do
+            if obj_check_hitbox_overlap(o, curO) then
+                if obj_is_valid_for_interaction(curO) and o ~= curO then
+                    if obj_is_attackable(curO) or obj_has_behavior_id(curO, id_bhvChainChomp) ~= 0 then
+                        curO.oInteractStatus = (ATTACK_PUNCH | INT_STATUS_WAS_ATTACKED | INT_STATUS_INTERACTED | INT_STATUS_TOUCHED_BOB_OMB)
+						hit = true
+                    elseif obj_is_bully(curO) then
+                        curO.oInteractStatus = ATTACK_KICK_OR_TRIP
+						hit = true
+                    end
+                end
+            end
+
+            if hit then
+                o.oInteractStatus = INT_STATUS_INTERACTED
+                if not continueOnHit then
+                    break
+                end
+            end
+
+            curO = obj_get_next(curO)
+        end
+    end
+
+    return hit
+end
+
+---@param o Object
 function loops.bhv_thunder_seg_init(o)
     local hb = get_temp_object_hitbox()
 
@@ -68,12 +104,12 @@ end
 ---@param o Object
 function loops.bhv_thunder_seg_loop(o)
 
-    local m = states[getLocalFromGlobalIndex(o.oOwner)]
+    local m = states[getLocalFromGlobalIndex(o.oElectroOwner)]
     if o.oTimer == 1 and m ~= nil then
         if o.oPosY > m.pos.y + 50 then
             if m.playerIndex == 0 then
                 spawn_sync_object(id_bhvThunderSeg, E_MODEL_THUNDER_SEG, o.oPosX, o.oPosY - 49, o.oPosZ, function (nextO)
-                    nextO.oOwner = o.oOwner
+                    nextO.oElectroOwner = o.oElectroOwner
                 end)
             end
         else
@@ -91,6 +127,8 @@ function loops.bhv_thunder_seg_loop(o)
     if o.oTimer > 8 then
         obj_mark_for_deletion(o)
     end
+
+    pikachuProjectileHitObj(o, true)
 end
 
 ---@param o Object
@@ -118,28 +156,43 @@ function loops.bhv_electro_particle_loop(o)
 end
 
 ---@param o Object
-function loops.bhv_electro_ball_init(o)
-    o.oFlags = o.oFlags | OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE
+---@param scale number
+local function setElectroBallHitBox(o, scale)
+
+    obj_scale(o, scale)
 
     local hb = get_temp_object_hitbox()
 
     hb.damageOrCoinValue = 2
-    hb.downOffset = 20
+    hb.downOffset = 20 * scale
     hb.health = 0
-    hb.height = 70
-    hb.radius = 70
+    hb.height = 70 * scale
+    hb.radius = 20 * scale
     hb.interactType = INTERACT_SHOCK
     hb.numLootCoins = 0
-    hb.hurtboxHeight = 50
-    hb.hurtboxRadius = 50
+    hb.hurtboxHeight = 0
+    hb.hurtboxRadius = 0
 
     obj_set_hitbox(o, hb)
+end
 
-    network_init_object(o, true, {'oInteractStatus', 'oOwner'})
+---@param o Object
+function loops.bhv_electro_ball_init(o)
+    o.oFlags = o.oFlags | OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE
+
+    setElectroBallHitBox(o, 1)
+
+    network_init_object(o, true, {'oInteractStatus', 'oElectroOwner'})
 end
 
 ---@param o Object
 function loops.bhv_electro_ball_loop(o)
+    if isStorm() then
+        setElectroBallHitBox(o, math.min(4 , 1 + o.oTimer/25))
+    elseif isRain() then
+        setElectroBallHitBox(o, math.min(2.5 , 1 + o.oTimer/25))
+    end
+
     o.oFaceAnglePitch= o.oFaceAnglePitch + 0x1000
     o.oFaceAngleRoll = o.oFaceAngleRoll + 0x800
 
@@ -161,7 +214,7 @@ function loops.bhv_electro_ball_loop(o)
         o.oGravity = -5
 
         if o.oMoveFlags & OBJ_MOVE_LANDED ~= 0 then
-            o.oVelY = 30
+            o.oVelY = 30 + 10 * o.header.gfx.scale.x * 0.4
         end
 
         if o.oTimer % 2 == 0 then
@@ -170,6 +223,10 @@ function loops.bhv_electro_ball_loop(o)
     end
 
     cur_obj_move_standard(78)
+
+    if pikachuProjectileHitObj(o) then
+        cur_obj_play_sound_2(SOUND_MOVING_SHOCKED)
+    end
 
     if o.oTimer > 130 or o.oMoveFlags & OBJ_MOVE_HIT_WALL ~= 0 or o.oInteractStatus & INT_STATUS_INTERACTED ~= 0 then
         obj_mark_for_deletion(o)
@@ -286,7 +343,7 @@ function loops.act_smash_up(m)
             return drop_and_set_mario_action(m, ACT_LEDGE_GRAB, 0)
         end
 
-        play_sound(SOUND_ENV_STAR, m.marioObj.header.gfx.cameraToObject)
+        cur_obj_play_sound_2(ternary(isRain() or isStorm(), SOUND_OBJ_SNUFIT_SHOOT, SOUND_ENV_STAR))
 
         if m.actionTimer > 10 then
             m.actionTimer = 0
@@ -309,11 +366,11 @@ function loops.act_smash_down(m)
     if m.actionState == 0 then
         playerTable[m.playerIndex].smashUpBlocked = true
         play_character_sound(m, CHAR_SOUND_YAHOO)
-        
 
         if m.playerIndex == 0 then
             spawn_sync_object(id_bhvThunderSeg, E_MODEL_THUNDER_SEG, m.pos.x, m.pos.y + 600, m.pos.z, function(o)
-                o.oOwner = nps[0].globalIndex
+                o.oElectroOwner = nps[0].globalIndex
+                o.oSubAction = 1
             end)
         end
 

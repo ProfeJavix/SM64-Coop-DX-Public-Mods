@@ -1,22 +1,26 @@
-if not _G.mhExists then return end
+--#region Localizations ---------------------------------------------------------------------
 
-local spawn_sync_object = spawn_sync_object
-local spawn_non_sync_object = spawn_non_sync_object
 local allocate_mario_action = allocate_mario_action
-local perform_ground_step = perform_ground_step
+local apply_slope_decel = apply_slope_decel
+local common_air_knockback_step = common_air_knockback_step
+local get_first_person_enabled = get_first_person_enabled
+local hook_mario_action = hook_mario_action
 local perform_air_step = perform_air_step
+local perform_ground_step = perform_ground_step
+local play_character_sound = play_character_sound
 local play_sound = play_sound
+local random = math.random
+local set_anim_to_frame = set_anim_to_frame
 local set_camera_shake_from_point = set_camera_shake_from_point
 local set_character_animation = set_character_animation
-local set_mario_action = set_mario_action
-local hookAction = hook_mario_action
-local apply_slope_decel = apply_slope_decel
-local play_character_sound = play_character_sound
-local set_mario_particle_flags = set_mario_particle_flags
-local update_air_without_turn = update_air_without_turn
 local set_first_person_enabled = set_first_person_enabled
-local common_air_knockback_step = common_air_knockback_step
-local set_anim_to_frame = set_anim_to_frame
+local set_mario_action = set_mario_action
+local set_mario_particle_flags = set_mario_particle_flags
+local spawn_non_sync_object = spawn_non_sync_object
+local spawn_sync_object = spawn_sync_object
+local update_air_without_turn = update_air_without_turn
+
+--#endregion --------------------------------------------------------------------------------
 
 local nps = gNetworkPlayers
 local playerTable = gPlayerSyncTable
@@ -47,7 +51,7 @@ function pound_ground(m)
     return false
 end
 
-hookAction(ACT_HAMMER_SWING, function(m)
+hook_mario_action(ACT_HAMMER_SWING, function(m)
     if m.actionTimer <= 0 and m.actionState ~= 0 then
         return set_mario_action(m, ACT_IDLE, 0)
     end
@@ -66,7 +70,7 @@ hookAction(ACT_HAMMER_SWING, function(m)
     end
 end)
 
-hookAction(ACT_HAMMER_360, function(m)
+hook_mario_action(ACT_HAMMER_360, function(m)
     if m.actionTimer <= 0 and m.actionState ~= 0 then
         return set_mario_action(m, ACT_IDLE, 0)
     end
@@ -95,7 +99,7 @@ hookAction(ACT_HAMMER_360, function(m)
     end
 end)
 
-hookAction(ACT_HAMMER_GROUND_POUND, function(m)
+hook_mario_action(ACT_HAMMER_GROUND_POUND, function(m)
     if m.actionTimer <= 0 and m.actionState == 3 and m.floorHeight >= m.pos.y then
         return set_mario_action(m, ACT_WALKING, 0)
     end
@@ -126,7 +130,7 @@ hookAction(ACT_HAMMER_GROUND_POUND, function(m)
     end
 end)
 
-hookAction(ACT_HAMMER_DIVE_GROUND_POUND, function(m)
+hook_mario_action(ACT_HAMMER_DIVE_GROUND_POUND, function(m)
     if m.actionTimer <= 0 and m.actionState == 2 and m.floorHeight >= m.pos.y then
         return set_mario_action(m, ACT_WALKING, 0)
     end
@@ -164,7 +168,7 @@ function throwFireball(m, yaw)
     end
 end
 
-hookAction(ACT_FIREBALL_SHOOT, function (m)
+hook_mario_action(ACT_FIREBALL_SHOOT, function (m)
     if m.actionTimer <= 0 and m.actionState ~= 0 then
         playerTable[m.playerIndex].blockMovesTimer = 20
         return set_mario_action(m, ACT_WALKING, 0)
@@ -182,7 +186,7 @@ hookAction(ACT_FIREBALL_SHOOT, function (m)
 
 end)
 
-hookAction(ACT_FIREBALL_TRIPLE_SHOOT, function (m)
+hook_mario_action(ACT_FIREBALL_TRIPLE_SHOOT, function (m)
     if m.actionTimer <= 0 and m.actionState ~= 0 then
         playerTable[m.playerIndex].blockMovesTimer = 20
         return set_mario_action(m, ACT_WALKING, 0)
@@ -202,7 +206,7 @@ hookAction(ACT_FIREBALL_TRIPLE_SHOOT, function (m)
     end
 end)
 
-hookAction(ACT_FIREBALL_TWIRL_SHOOTING, function (m)
+hook_mario_action(ACT_FIREBALL_TWIRL_SHOOTING, function (m)
 
     local step = perform_air_step(m, 0)
 
@@ -218,7 +222,7 @@ hookAction(ACT_FIREBALL_TWIRL_SHOOTING, function (m)
         m.actionState = 1
     else
 
-        if m.actionTimer % math.random(6, 7) == 0 or m.actionTimer % 15 == 0 then
+        if m.actionTimer % random(6, 7) == 0 or m.actionTimer % 15 == 0 then
             throwFireball(m, m.twirlYaw)
         end
 
@@ -240,7 +244,7 @@ end)
 ACT_CANNON_SHOOT = allocate_mario_action(ACT_FLAG_STATIONARY)
 ACT_CANNON_FIRST_PERSON = allocate_mario_action(ACT_FLAG_ALLOW_FIRST_PERSON | ACT_FLAG_STATIONARY)
 
-hookAction(ACT_CANNON_SHOOT, function(m)
+hook_mario_action(ACT_CANNON_SHOOT, function(m)
     if m.actionTimer <= 0 and m.actionState == 2 then
         local nextAct = ternary(m.prevAction == ACT_CANNON_FIRST_PERSON, m.prevAction, ACT_WALKING)
         if m.playerIndex == 0 then
@@ -292,7 +296,7 @@ hookAction(ACT_CANNON_SHOOT, function(m)
     end
 end)
 
-hookAction(ACT_CANNON_FIRST_PERSON, function(m)
+hook_mario_action(ACT_CANNON_FIRST_PERSON, function(m)
     if m.controller.buttonPressed & U_JPAD ~= 0 then
         playerTable[m.playerIndex].blockMovesTimer = 20
 
@@ -329,7 +333,7 @@ ACT_BOOMERANG_THROW = allocate_mario_action(ACT_FLAG_ATTACKING)
 ACT_BOOMERANG_FIRST_PERSON = allocate_mario_action(ACT_FLAG_ALLOW_FIRST_PERSON | ACT_FLAG_STATIONARY)
 ACT_BOOMERANG_360_THROW = allocate_mario_action(ACT_FLAG_ATTACKING | ACT_FLAG_MOVING)
 
-hookAction(ACT_BOOMERANG_THROW, function (m)
+hook_mario_action(ACT_BOOMERANG_THROW, function (m)
 
     if m.actionState ~= 0 and m.actionTimer == 0 then
         m.faceAngle.x = 0
@@ -348,7 +352,7 @@ hookAction(ACT_BOOMERANG_THROW, function (m)
     end
 end)
 
-hookAction(ACT_BOOMERANG_FIRST_PERSON, function(m)
+hook_mario_action(ACT_BOOMERANG_FIRST_PERSON, function(m)
     if m.controller.buttonPressed & U_JPAD ~= 0 then
         playerTable[m.playerIndex].blockMovesTimer = 20
         m.faceAngle.x = 0
@@ -384,7 +388,7 @@ hookAction(ACT_BOOMERANG_FIRST_PERSON, function(m)
     end
 end)
 
-hookAction(ACT_BOOMERANG_360_THROW, function (m)
+hook_mario_action(ACT_BOOMERANG_360_THROW, function (m)
     
     if m.actionState ~= 0 and m.actionTimer == 0 then
         playerTable[m.playerIndex].blockMovesTimer = 20

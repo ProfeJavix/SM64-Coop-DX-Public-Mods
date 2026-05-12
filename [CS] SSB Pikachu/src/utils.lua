@@ -9,6 +9,12 @@ local nps = gNetworkPlayers
 local playerTable = gPlayerSyncTable
 
 ---@param idx integer
+---@return boolean
+function isPikachu(idx)
+    return _G.charSelect.character_get_current_number(idx) == CT_PIKACHU
+end
+
+---@param idx integer
 ---@return integer
 function getLocalFromGlobalIndex(idx)
     if not nps[idx] then return -1 end
@@ -32,13 +38,23 @@ function castElectroBall(m)
                 z = get_hand_foot_pos_z(m, 0)
             }
             spawn_sync_object(id_bhvElectroBall, E_MODEL_ELECTRO_BALL, pos.x, pos.y, pos.z, function(eb)
-                eb.oOwner = nps[0].globalIndex
+                eb.oElectroOwner = nps[0].globalIndex
                 eb.oMoveAngleYaw = m.faceAngle.y
             end)
             playerTable[0].shockCooldown = 30
         end
         play_character_sound(m, CHAR_SOUND_HERE_WE_GO)
     end
+end
+
+---@return boolean
+function isStorm()
+    return _G.weatherCycleApi ~= nil and _G.weatherCycleApi.get_weather_type() == _G.weatherCycleApi.constants.WEATHER_STORM
+end
+
+---@return boolean
+function isRain()
+    return _G.weatherCycleApi ~= nil and _G.weatherCycleApi.get_weather_type() == _G.weatherCycleApi.constants.WEATHER_RAIN
 end
 
 ---@param cond? boolean

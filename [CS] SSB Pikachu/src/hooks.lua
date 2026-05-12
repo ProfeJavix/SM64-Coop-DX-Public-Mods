@@ -23,40 +23,27 @@ function hooks.update()
 end
 
 ---@param m MarioState
-function hooks.mario_update(m)
-
-    if _G.charSelect.character_get_voice(m) == VOICETABLE_PIKACHU then
-        _G.charSelect.voice.snore(m)
-    end
-end
-
----@param m MarioState
----@param sound CharacterSound
-function hooks.on_character_sound(m, sound)
-    if _G.charSelect.character_get_voice(m) == VOICETABLE_PIKACHU then
-        return _G.charSelect.voice.sound(m, sound)
-    end
-end
-
----@param m MarioState
 ---@param o Object
 function hooks.allow_interact(m, o)
     local id = get_id_from_behavior(o.behavior)
 
-    if (id == id_bhvThunderSeg or id == id_bhvElectroBall) and o.oOwner == nps[m.playerIndex].globalIndex then
-        return false
+    if isPikachu(m.playerIndex) then
+        if ((id == id_bhvThunderSeg or id == id_bhvElectroBall) and o.oElectroOwner == nps[m.playerIndex].globalIndex) or
+        (_G.weatherCycleApi and obj_has_model_extended(o, _G.weatherCycleApi.constants.E_MODEL_WC_LIGHTNING) ~= 0) then
+            return false
+        end
     end
 
     if id == id_bhvThunderSeg and m.invincTimer == 0 then
-        hurt_and_set_mario_action(m, ACT_TURBO_SHOCKED, o.oOwner, 8)
+        hurt_and_set_mario_action(m, ACT_TURBO_SHOCKED, o.oElectroOwner, ternary(isStorm(), 12, 8))
         return false
     end
 end
 
 ---@param a MarioState
 ---@param v MarioState
-function hooks.allow_pvp_attack(a, v)
-    if a.action == ACT_SMASH_SIDE and passes_pvp_interaction_checks(a, v) ~= 0 then
+function hooks.pika_allow_pvp_attack(a, v)
+    if isPikachu(a.playerIndex) and a.action == ACT_SMASH_SIDE and passes_pvp_interaction_checks(a, v) ~= 0 then
         playerTable[a.playerIndex].smashSideHit = true
         hurt_and_set_mario_action(v, ACT_TURBO_SHOCKED, nps[a.playerIndex].globalIndex, 12)
         return false
@@ -64,16 +51,7 @@ function hooks.allow_pvp_attack(a, v)
 end
 
 ---@param m MarioState
-function hooks.allow_force_water_action(m)
-    if m.action == ACT_SMASH_UP and m.actionState ~= 2 then
-        return false
-    end
-
-    playerTable[m.playerIndex].smashUpBlocked = false
-end
-
----@param m MarioState
-function hooks.cs_pikachu_mario_update(m)
+function hooks.pika_mario_update(m)
 
     if m.action ~= ACT_SMASH_UP and m.floorHeight == m.pos.y then
         playerTable[m.playerIndex].smashUpBlocked = false
@@ -83,7 +61,7 @@ function hooks.cs_pikachu_mario_update(m)
         return
     end
 
-    if m.controller.buttonPressed & Y_BUTTON ~= 0 and
+    if m.controller.buttonPressed & Y_BUTTON ~= 0 and m.action ~= ACT_SMASH_UP and
     (m.action & ACT_FLAG_SWIMMING_OR_FLYING == 0 or m.action & ACT_FLAG_SWIMMING ~= 0) and
     not playerTable[m.playerIndex].smashUpBlocked then
         playerTable[m.playerIndex].smashUpBlocked = true
@@ -106,11 +84,20 @@ end
 
 ---@param m MarioState
 ---@param incAct integer
-function hooks.cs_pikachu_before_set_mario_action(m, incAct)
+function hooks.pika_before_set_mario_action(m, incAct)
 
     if incAct == ACT_PUNCHING or incAct == ACT_MOVE_PUNCHING or (incAct == ACT_JUMP_KICK and m.action ~= ACT_SMASH_NORMAL) then
         return set_mario_action(m, ACT_SMASH_NORMAL, ternary(incAct == ACT_JUMP_KICK, 1, 0))
     end
+end
+
+---@param m MarioState
+function hooks.pika_allow_force_water_action(m)
+    if m.action == ACT_SMASH_UP and m.actionState ~= 2 then
+        return false
+    end
+
+    playerTable[m.playerIndex].smashUpBlocked = false
 end
 
 return hooks

@@ -1,9 +1,10 @@
 ---@class Object
----@field oOwner integer
+---@field oElectroOwner integer
 
 ---@class _G
 ---@field charSelectExists? boolean
 ---@field charSelect? table
+---@field weatherCycleApi? table
 
 --#region Localizations ---------------------------------------------------------------------
 
@@ -26,7 +27,7 @@ for i = 0, MAX_PLAYERS - 1 do
 end
 
 define_custom_obj_fields({
-    oOwner = "s32"
+    oElectroOwner = "s32"
 })
 
 E_MODEL_PIKACHU = smlua_model_util_get_id("pikachu_geo")
@@ -81,13 +82,6 @@ VOICETABLE_PIKACHU = {
     [CHAR_SOUND_YAWNING] = {'Pika-Yawn.ogg'},
 }
 
---[[ local CAPTABLE_PIKACHU = {
-    normal = smlua_model_util_get_id("pikachunormal_geo"),
-    wing = smlua_model_util_get_id("pikachuwing_geo"),
-    metal = smlua_model_util_get_id("pikachumetal_geo"),
-    metalWing = smlua_model_util_get_id("pikachucapwing_geo"),
-} ]]
-
 local PALETTE_CHAR = {
     [PANTS]  = "ffffff",
     [SHIRT]  = "ffffff",
@@ -107,7 +101,7 @@ CT_PIKACHU = _G.charSelect.character_add(
     CT_MARIO,
     TEX_CUSTOM_LIFE_ICON
 )
---_G.charSelect.character_add_caps(E_MODEL_PIKACHU, CAPTABLE_PIKACHU)
+
 _G.charSelect.character_add_voice(E_MODEL_PIKACHU, VOICETABLE_PIKACHU)
 _G.charSelect.character_add_palette_preset(E_MODEL_PIKACHU, PALETTE_CHAR)
 

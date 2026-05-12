@@ -1,19 +1,23 @@
-if not _G.mhExists then return end
+--#region Localizations ---------------------------------------------------------------------
 
-local network_is_server = network_is_server
-local globalPopup = djui_popup_create_global
-local hookEvent = hook_event
-local hookMMInput = hook_mod_menu_inputbox
-local hookMMCheckbox = hook_mod_menu_checkbox
-local setColor = djui_hud_set_color
-local measure = djui_hud_measure_text
-local setFont = djui_hud_set_font
-local drawText = djui_hud_print_text
-local drawRect = djui_hud_render_rect
-local screenWidth = djui_hud_get_screen_width
-local screenHeight = djui_hud_get_screen_height
 local ceil = math.ceil
-local clamp = clampf
+local clamp = math.clamp
+local djui_hud_get_screen_height = djui_hud_get_screen_height
+local djui_hud_get_screen_width = djui_hud_get_screen_width
+local djui_hud_measure_text = djui_hud_measure_text
+local djui_hud_print_text = djui_hud_print_text
+local djui_hud_render_rect = djui_hud_render_rect
+local djui_hud_set_color = djui_hud_set_color
+local djui_hud_set_font = djui_hud_set_font
+local djui_popup_create_global = djui_popup_create_global
+local hook_event = hook_event
+local hook_mod_menu_checkbox = hook_mod_menu_checkbox
+local hook_mod_menu_inputbox = hook_mod_menu_inputbox
+local network_is_server = network_is_server
+local tonumber = tonumber
+local tostring = tostring
+
+--#endregion --------------------------------------------------------------------------------
 
 local nps = gNetworkPlayers
 local states = gMarioStates
@@ -74,27 +78,27 @@ function on_hud_render()
             local pu = pt.powerUp
             local hudData = POWERUP_HUD_DATA[pu]
 
-            setFont(FONT_RECOLOR_HUD)
-            setColor(hudData.color.r, hudData.color.g, hudData.color.b, 240)
-
+            djui_hud_set_font(FONT_RECOLOR_HUD)
+            djui_hud_set_color(hudData.color.r, hudData.color.g, hudData.color.b, 240)
+            
             local text = hudData.text .. " (" .. tostring(seconds) .. "s)"
-            drawText(text, 5, screenHeight() / 2 - 36, 2)
+            djui_hud_print_text(text, 5, djui_hud_get_screen_height() / 2 - 36, 2)
 
             if showControls then
 
                 local controls = hudData.controls
 
                 local hght = 20 + (#controls * 32) + (#controls * 10)
-                local x = screenWidth() - 405
-                local y = screenHeight() / 2 - hght / 2
+                local x = djui_hud_get_screen_width() - 405
+                local y = djui_hud_get_screen_height() / 2 - hght / 2
 
-                setColor(25, 25, 25, 150)
-                drawRect(x, y, 400, hght)
+                djui_hud_set_color(25, 25, 25, 150)
+                djui_hud_render_rect(x, y, 400, hght)
 
-                setColor(158, 0, 228, 240)
-                drawText('CONTROLS', x + 200 - measure('CONTROLS'), y - 48, 2)
+                djui_hud_set_color(158, 0, 228, 240)
+                djui_hud_print_text('CONTROLS', x + 200 - djui_hud_measure_text('CONTROLS'), y - 48, 2)
 
-                setFont(FONT_NORMAL)
+                djui_hud_set_font(FONT_NORMAL)
                 y = y + 10
                 
 
@@ -103,12 +107,12 @@ function on_hud_render()
                     local action = controls[i].action
 
                     if action == m.action then
-                        setColor(237, 228, 38, 240)
+                        djui_hud_set_color(237, 228, 38, 240)
                     else
-                        setColor(220, 220, 220, 240)
+                        djui_hud_set_color(220, 220, 220, 240)
                     end
 
-                    drawText(text, x + 200 - measure(text) / 2, y, 1)
+                    djui_hud_print_text(text, x + 200 - djui_hud_measure_text(text) / 2, y, 1)
                     y = y + 42
                 end
             end
@@ -117,25 +121,28 @@ function on_hud_render()
     end
 end
 
-hookEvent(HOOK_ON_HUD_RENDER_BEHIND, on_hud_render)
+hook_event(HOOK_ON_HUD_RENDER_BEHIND, on_hud_render)
 
-    hookMMCheckbox('Show Controls', true, function (_, val)
+    hook_mod_menu_checkbox('Show Controls', true, function (_, val)
         showControls = val
     end)
 if network_is_server() then
-    hookMMInput('Powerup Seconds [5-60]', '10', 8, function (_, val)
+    hook_mod_menu_inputbox('Powerup Seconds [5-60]', '10', 8, function (_, val)
         globalTable.powerUpStartTimer = clamp(ceil(tonumber(val) or 10), 5, 60) * 30
     end)
-    hookMMCheckbox('Randomized Powerups', false, function(_, val)
+    hook_mod_menu_checkbox('Randomized Powerups', false, function(_, val)
         globalTable.randomPowerups = val
         for i = 0, MAX_PLAYERS - 1 do
             if nps[i].connected then
                 playerTable[i].toggleRandomPowerups = true
             end
         end
-        globalPopup(ternary(val, "Powerups have been randomized.", "Powerups are no longer randomized."), 1)
+        djui_popup_create_global(ternary(val, "Powerups have been randomized.", "Powerups are no longer randomized."), 1)
     end)
-    hookMMCheckbox('Powerups for hunters', true, function (_, val)
-        globalTable.powerUpsForHunters = val
-    end)
+
+    if _G.mhExists then
+        hook_mod_menu_checkbox('Powerups for hunters', true, function (_, val)
+            globalTable.powerUpsForHunters = val
+        end)
+    end
 end

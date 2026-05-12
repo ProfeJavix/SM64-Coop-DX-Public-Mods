@@ -1,5 +1,5 @@
--- name: [CS] SSB Pikachu v1.1
--- description: This CS mod adds Pikachu with a moveset insired in his Super Smash Bros. series one.\n\nPikachu model by lochsteps.\n\nMade by \\#333\\Profe\\#ff0\\Javix.
+-- name: [CS] SSB Pikachu v1.2.1
+-- description: This CS mod adds Pikachu with a moveset insired in his Super Smash Bros. series one.\n\nPikachu model by lochsteps.\nWeatherCycleDX mechanics by srGSR.\n\nMade by \\#333\\Profe\\#ff0\\Javix.
 
 --#region Localizations ---------------------------------------------------------------------
 
@@ -28,11 +28,9 @@ hook_mario_action(ACT_SMASH_SIDE, loops.act_smash_side)
 hook_mario_action(ACT_TURBO_SHOCKED, loops.act_turbo_shocked)
 
 hook_event(HOOK_UPDATE, hooks.update)
-hook_event(HOOK_MARIO_UPDATE, hooks.mario_update)
-hook_event(HOOK_CHARACTER_SOUND, hooks.on_character_sound)
 hook_event(HOOK_ALLOW_INTERACT, hooks.allow_interact)
-hook_event(HOOK_ALLOW_PVP_ATTACK, hooks.allow_pvp_attack)
-hook_event(HOOK_ALLOW_FORCE_WATER_ACTION, hooks.allow_force_water_action)
 
-_G.charSelect.character_hook_moveset(CT_PIKACHU, HOOK_MARIO_UPDATE, hooks.cs_pikachu_mario_update)
-_G.charSelect.character_hook_moveset(CT_PIKACHU, HOOK_BEFORE_SET_MARIO_ACTION, hooks.cs_pikachu_before_set_mario_action)
+_G.charSelect.character_hook_moveset(CT_PIKACHU, HOOK_MARIO_UPDATE, hooks.pika_mario_update)
+_G.charSelect.character_hook_moveset(CT_PIKACHU, HOOK_BEFORE_SET_MARIO_ACTION, hooks.pika_before_set_mario_action)
+_G.charSelect.character_hook_moveset(CT_PIKACHU, HOOK_ALLOW_PVP_ATTACK, hooks.pika_allow_pvp_attack)
+_G.charSelect.character_hook_moveset(CT_PIKACHU, HOOK_ALLOW_FORCE_WATER_ACTION, hooks.pika_allow_force_water_action)

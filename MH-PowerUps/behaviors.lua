@@ -1,43 +1,47 @@
-if not _G.mhExists then return end
+--#region Localizations ---------------------------------------------------------------------
 
-local cur_obj_hide = cur_obj_hide
-local cur_obj_unhide = cur_obj_unhide
-local obj_mark_for_deletion = obj_mark_for_deletion
-local define_custom_obj_fields = define_custom_obj_fields
-local cur_obj_set_hitbox_radius_and_height = cur_obj_set_hitbox_radius_and_height
-local cur_obj_scale = cur_obj_scale
-local network_init_object = network_init_object
-local nearest_mario_state_to_object = nearest_mario_state_to_object
-local cur_obj_become_tangible = cur_obj_become_tangible
-local obj_check_if_collided_with_object = obj_check_if_collided_with_object
-local cur_obj_become_intangible = cur_obj_become_intangible
-local cur_obj_play_sound_1 = cur_obj_play_sound_1
-local random = math.random
-local network_send_object = network_send_object
-local spawn_non_sync_object = spawn_non_sync_object
-local obj_angle_to_object = obj_angle_to_object
 local approach_s16_symmetric = approach_s16_symmetric
+local coss = coss
+local cur_obj_become_intangible = cur_obj_become_intangible
+local cur_obj_become_tangible = cur_obj_become_tangible
+local cur_obj_hide = cur_obj_hide
+local cur_obj_lateral_dist_to_home = cur_obj_lateral_dist_to_home
+local cur_obj_move_standard = cur_obj_move_standard
+local cur_obj_play_sound_1 = cur_obj_play_sound_1
+local cur_obj_play_sound_2 = cur_obj_play_sound_2
+local cur_obj_scale = cur_obj_scale
+local cur_obj_set_hitbox_radius_and_height = cur_obj_set_hitbox_radius_and_height
+local cur_obj_unhide = cur_obj_unhide
+local cur_obj_update_floor_and_walls = cur_obj_update_floor_and_walls
+local define_custom_obj_fields = define_custom_obj_fields
+local degrees_to_sm64 = degrees_to_sm64
 local get_hand_foot_pos_x = get_hand_foot_pos_x
 local get_hand_foot_pos_y = get_hand_foot_pos_y
 local get_hand_foot_pos_z = get_hand_foot_pos_z
-local sins = sins
-local coss = coss
-local degrees_to_sm64 = degrees_to_sm64
-local obj_set_gfx_pos = obj_set_gfx_pos
-local cur_obj_update_floor_and_walls = cur_obj_update_floor_and_walls
-local cur_obj_play_sound_2 = cur_obj_play_sound_2
-local cur_obj_lateral_dist_to_home = cur_obj_lateral_dist_to_home
-local set_mario_action = set_mario_action
-local cur_obj_move_standard = cur_obj_move_standard
+local hook_behavior = hook_behavior
+local ipairs = ipairs
+local lateral_dist_between_objects = lateral_dist_between_objects
+local nearest_mario_state_to_object = nearest_mario_state_to_object
+local network_init_object = network_init_object
+local network_send_object = network_send_object
+local obj_angle_to_object = obj_angle_to_object
+local obj_check_hitbox_overlap = obj_check_hitbox_overlap
+local obj_compute_vel_from_move_pitch = obj_compute_vel_from_move_pitch
+local obj_mark_for_deletion = obj_mark_for_deletion
 local obj_set_billboard = obj_set_billboard
+local obj_set_gfx_pos = obj_set_gfx_pos
+local obj_set_vel = obj_set_vel
+local obj_turn_pitch_toward_mario = obj_turn_pitch_toward_mario
+local random = math.random
 local random_float = random_float
 local random_u16 = random_u16
-local obj_compute_vel_from_move_pitch = obj_compute_vel_from_move_pitch
-local obj_set_vel = obj_set_vel
+local set_mario_action = set_mario_action
+local sins = sins
+local spawn_non_sync_object = spawn_non_sync_object
+local spawn_sync_object = spawn_sync_object
 local vec3f_dist = vec3f_dist
-local obj_turn_pitch_toward_mario = obj_turn_pitch_toward_mario
-local lateral_dist_between_objects = lateral_dist_between_objects
-local hookBhv = hook_behavior
+
+--#endregion --------------------------------------------------------------------------------
 
 local states = gMarioStates
 local playerTable = gPlayerSyncTable
@@ -120,7 +124,7 @@ function bhv_powerup_loop(o)
     elseif act == 1 then --available
         cur_obj_scale(data.scale)
 
-        if m and obj_check_if_collided_with_object(o, m.marioObj) == 1 then --pickup
+        if m and obj_check_hitbox_overlap(o, m.marioObj) then --pickup
             local pt = playerTable[m.playerIndex]
 
             if pt.powerUp == 0 and m.flags & (MARIO_WING_CAP | MARIO_METAL_CAP | MARIO_VANISH_CAP) == 0 and
@@ -192,6 +196,9 @@ end
 function bhv_held_hammer_init(o)
     o.oFlags = o.oFlags | OBJ_FLAG_UPDATE_GFX_POS_AND_ANGLE
     cur_obj_scale(0.8)
+
+    cur_obj_set_hitbox_radius_and_height(50, 100)
+
     network_init_object(o, true, {
         'oPowerupType',
         'oPowerupHeldByPlayerIndex'
@@ -200,6 +207,8 @@ end
 
 ---@param o Object
 function bhv_held_hammer_loop(o)
+
+    o.oInteractStatus = 0
 
     local m, hidden = common_held_powerup_checks(o, HAMMER)
     if m then
@@ -279,14 +288,13 @@ function bhv_fireball_loop(o)
 
     spawn_non_sync_object(id_bhvFireballSmoke, E_MODEL_BURN_SMOKE, o.oPosX, o.oPosY, o.oPosZ, function(_)end)
 
-    local m = states[getLocalFromGlobalIdx(o.oPowerupHeldByPlayerIndex)]
-    local nm = nearest_mario_state_to_object(o)
-    local hitSomeone = shouldHitWithPowerup(m, nm) and obj_check_if_collided_with_object(o, nm.marioObj) == 1
+    local marios = puHitObject(o)
 
     if o.oMoveFlags & (OBJ_MOVE_HIT_WALL | OBJ_MOVE_MASK_IN_WATER | OBJ_MOVE_ABOVE_DEATH_BARRIER) ~= 0 or
-    cur_obj_lateral_dist_to_home() > 3000 or hitSomeone then
-        if hitSomeone then
-            set_mario_action(nm, ACT_BURNING_GROUND, 0)
+    cur_obj_lateral_dist_to_home() > 3000 or o.oInteractStatus == INT_STATUS_INTERACTED then
+
+        for _, m in ipairs(marios) do
+            set_mario_action(m, ACT_BURNING_GROUND, 0)
         end
         obj_mark_for_deletion(o)
     end
@@ -391,17 +399,14 @@ function bhv_cannonball_loop(o)
     cur_obj_become_tangible()
     cur_obj_update_floor_and_walls()
 
-    local nm = nearest_mario_state_to_object(o)
-    local m = states[getLocalFromGlobalIdx(o.oPowerupHeldByPlayerIndex)]
+    puHitObject(o)
 
     if o.oMoveFlags & (OBJ_MOVE_HIT_WALL | OBJ_MOVE_LANDED | OBJ_MOVE_MASK_IN_WATER) ~= 0 or
-    (shouldHitWithPowerup(m, nm) and obj_check_if_collided_with_object(o, nm.marioObj) == 1) then
-        
-        if nm.playerIndex == 0 then
+    o.oInteractStatus == INT_STATUS_INTERACTED then
+        if getLocalFromGlobalIdx(o.oPowerupHeldByPlayerIndex) == 0 then
             spawn_sync_object(id_bhvExplosion, E_MODEL_EXPLOSION, o.oPosX, o.oPosY, o.oPosZ, function()end)
         end
         obj_mark_for_deletion(o)
-
     end
     obj_compute_vel_from_move_pitch(70)
     cur_obj_move_standard(78)
@@ -428,6 +433,9 @@ end
 
 ---@param o Object
 function bhv_boomerang_loop(o)
+
+    o.oInteractStatus = 0
+
     local m, hidden = common_held_powerup_checks(o, BOOMERANG)
     if m then
         local act = o.oAction
@@ -446,12 +454,16 @@ function bhv_boomerang_loop(o)
 
             cur_obj_update_floor_and_walls()
 
-            local nm = nearest_mario_state_to_object(o)
-            if shouldHitWithPowerup(m, nm) and obj_check_if_collided_with_object(o, nm.marioObj) == 1 then
+            local marios = puHitObject(o)
+            if o.oInteractStatus == INT_STATUS_INTERACTED then
                 cur_obj_play_sound_1(SOUND_ACTION_HIT_2)
-                set_mario_action(nm, ACT_BACKWARD_GROUND_KB, 0)
-				nm.invincTimer = 60
-				nm.hurtCounter = 8
+
+                for _, nm in ipairs(marios) do
+                    set_mario_action(nm, ACT_BACKWARD_GROUND_KB, 0)
+                    nm.invincTimer = 60
+                    nm.hurtCounter = 8
+                end
+
                 playerTable[m.playerIndex].blockMovesTimer = 45
 
                 if act ~= 2 then
@@ -461,7 +473,7 @@ function bhv_boomerang_loop(o)
         end
 
         if act == 0 then
-            
+
             o.oGraphYOffset = 40
             o.oMoveAnglePitch = 0
             obj_set_vel(o, 0, 0, 0)
@@ -554,10 +566,10 @@ function bhv_boomerang_loop(o)
 end
 --#endregion ----------------------------------------------------------------------------------------------------------
 
-id_bhvPowerup = hookBhv(nil, OBJ_LIST_LEVEL, true, bhv_powerup_init, bhv_powerup_loop, "id_bhvMHPowerup")
-id_bhvHeldHammer = hookBhv(nil, OBJ_LIST_GENACTOR, true, bhv_held_hammer_init, bhv_held_hammer_loop, "id_bhvPUHeldHammer")
-id_bhvFireball = hookBhv(nil, OBJ_LIST_GENACTOR, true, bhv_fireball_init, bhv_fireball_loop, "id_bhvPUFireball")
-id_bhvFireballSmoke = hookBhv(nil, OBJ_LIST_UNIMPORTANT, true, bhv_fireball_smoke_init, bhv_fireball_smoke_loop)
-id_bhvHeldCannon = hookBhv(nil, OBJ_LIST_GENACTOR, true, bhv_held_cannon_init, bhv_held_cannon_loop, "id_bhvPUHeldCannon")
-id_bhvCannonball = hookBhv(nil, OBJ_LIST_GENACTOR, true, bhv_cannonball_init, bhv_cannonball_loop, "id_bhvPUCannonball")
-id_bhvBoomerang = hookBhv(nil, OBJ_LIST_GENACTOR, true, bhv_boomerang_init, bhv_boomerang_loop, "id_bhvPUBoomerang")
+id_bhvPowerup = hook_behavior(nil, OBJ_LIST_LEVEL, true, bhv_powerup_init, bhv_powerup_loop, "id_bhvMHPowerup")
+id_bhvHeldHammer = hook_behavior(nil, OBJ_LIST_GENACTOR, true, bhv_held_hammer_init, bhv_held_hammer_loop, "id_bhvPUHeldHammer")
+id_bhvFireball = hook_behavior(nil, OBJ_LIST_GENACTOR, true, bhv_fireball_init, bhv_fireball_loop, "id_bhvPUFireball")
+id_bhvFireballSmoke = hook_behavior(nil, OBJ_LIST_UNIMPORTANT, true, bhv_fireball_smoke_init, bhv_fireball_smoke_loop)
+id_bhvHeldCannon = hook_behavior(nil, OBJ_LIST_GENACTOR, true, bhv_held_cannon_init, bhv_held_cannon_loop, "id_bhvPUHeldCannon")
+id_bhvCannonball = hook_behavior(nil, OBJ_LIST_GENACTOR, true, bhv_cannonball_init, bhv_cannonball_loop, "id_bhvPUCannonball")
+id_bhvBoomerang = hook_behavior(nil, OBJ_LIST_GENACTOR, true, bhv_boomerang_init, bhv_boomerang_loop, "id_bhvPUBoomerang")

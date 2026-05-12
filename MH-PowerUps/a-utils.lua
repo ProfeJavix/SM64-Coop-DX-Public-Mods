@@ -1,19 +1,35 @@
-if not _G.mhExists then return end
+--#region Localizations ---------------------------------------------------------------------
 
-local smlua_model_util_get_id = smlua_model_util_get_id
-local sqrf = sqrf
 local atan2s = atan2s
-local sm64_to_degrees = sm64_to_degrees
-local spawn_sync_object = spawn_sync_object
+local coss = coss
+local insert = table.insert
+local ipairs = ipairs
 local network_send_object = network_send_object
+local obj_check_hitbox_overlap = obj_check_hitbox_overlap
+local obj_get_first = obj_get_first
+local obj_get_next = obj_get_next
+local obj_has_behavior_id = obj_has_behavior_id
+local obj_is_attackable = obj_is_attackable
+local obj_is_bully = obj_is_bully
+local obj_is_valid_for_interaction = obj_is_valid_for_interaction
 local passes_pvp_interaction_checks = passes_pvp_interaction_checks
+local sins = sins
+local sm64_to_degrees = sm64_to_degrees
+local smlua_model_util_get_id = smlua_model_util_get_id
 local spawn_sync_object = spawn_sync_object
+local sqrt = math.sqrt
+
+--#endregion --------------------------------------------------------------------------------
 
 local nps = gNetworkPlayers
 local states = gMarioStates
 local globalTable = gGlobalSyncTable
 
 --#region MH Stuff ----------------------------------------------------------------------------------------------------
+
+---@class _G
+---@field mhExists? boolean
+---@field mhApi? table
 
 getTeam = function (_) return 1 end
 allowPvpAttack = function (_, _) return true end
@@ -567,8 +583,16 @@ end
 ---@param posTo Vec3f
 ---@return integer
 function pos_pitch_to_pos(posFrom, posTo)
-    local xzDist = sqrf((posTo.x - posFrom.x)^2 + (posTo.z - posFrom.z)^2)
+    local xzDist = sqrt((posTo.x - posFrom.x)^2 + (posTo.z - posFrom.z)^2)
     return atan2s(xzDist, posFrom.y - posTo.y)
+end
+
+---@param o Object
+---@param pos Vec3f
+function objSetVec3fPos(o, pos)
+    o.oPosX = pos.x
+    o.oPosY = pos.y
+    o.oPosZ = pos.z
 end
 
 ---@param yaw integer
@@ -640,4 +664,50 @@ function shouldHitWithPowerup(owner, target)
 
     return allowPvpAttack(states[owner.playerIndex], states[target.playerIndex])
 end
+
+---@param o Object
+---@param continueOnHit? boolean
+---@return MarioState[]
+function puHitObject(o, continueOnHit)
+    local hit = false
+    local marios = {}
+    
+    for _, list in ipairs({ OBJ_LIST_PLAYER, OBJ_LIST_PUSHABLE, OBJ_LIST_GENACTOR }) do
+        local curO = obj_get_first(list)
+        while curO do
+            
+            if obj_check_hitbox_overlap(o, curO) then
+                if list == OBJ_LIST_PLAYER then
+                    local owner = states[getLocalFromGlobalIdx(o.oPowerupHeldByPlayerIndex)]
+                    local target = states[getLocalFromGlobalIdx(curO.globalPlayerIndex)]
+
+                    if shouldHitWithPowerup(owner, target) then
+                        insert(marios, target)
+                        hit = true
+                    end
+                elseif obj_is_valid_for_interaction(curO) and o ~= curO then
+                    if obj_is_attackable(curO) or obj_has_behavior_id(curO, id_bhvChainChomp) ~= 0 then
+                        curO.oInteractStatus = (ATTACK_PUNCH | INT_STATUS_WAS_ATTACKED | INT_STATUS_INTERACTED | INT_STATUS_TOUCHED_BOB_OMB)
+						hit = true
+                    elseif obj_is_bully(curO) then
+                        curO.oInteractStatus = ATTACK_KICK_OR_TRIP
+						hit = true
+                    end
+                end
+            end
+
+            if hit then
+                o.oInteractStatus = INT_STATUS_INTERACTED
+                if not continueOnHit then
+                    break
+                end
+            end
+
+            curO = obj_get_next(curO)
+        end
+    end
+
+    return marios
+end
+
 --#endregion ----------------------------------------------------------------------------------------------------------
